@@ -18,7 +18,19 @@
  *
  *======================================================================================
  */
+#ifdef USE_STM32_SPI
+#include "stm32_spi.h"
+#define spi_init stm32_spi_init
+#define spi_shutdown stm32_spi_shutdown
+#define spi_send_command stm32_spi_send_command
+#define enable_pins stm32_enable_pins
+#else
 #include "ch347_spi.h"
+#define spi_init ch347_spi_init
+#define spi_shutdown ch347_spi_shutdown
+#define spi_send_command ch347_spi_send_command
+/* enable_pins is already compatible prototype */
+#endif
 #include "spi_controller.h"
 
 SPI_CONTROLLER_RTN_T SPI_CONTROLLER_Enable_Manual_Mode( void )
@@ -28,7 +40,7 @@ SPI_CONTROLLER_RTN_T SPI_CONTROLLER_Enable_Manual_Mode( void )
 
 SPI_CONTROLLER_RTN_T SPI_CONTROLLER_Write_One_Byte( u8  data )
 {
-	return (SPI_CONTROLLER_RTN_T)ch347_spi_send_command(1, 0, &data, NULL);
+	return (SPI_CONTROLLER_RTN_T)spi_send_command(1, 0, &data, NULL);
 }
 
 SPI_CONTROLLER_RTN_T SPI_CONTROLLER_Chip_Select_High( void )
@@ -43,12 +55,12 @@ SPI_CONTROLLER_RTN_T SPI_CONTROLLER_Chip_Select_Low( void )
 
 SPI_CONTROLLER_RTN_T SPI_CONTROLLER_Read_NByte( u8 *ptr_rtn_data, u32 len, SPI_CONTROLLER_SPEED_T speed )
 {
-	return (SPI_CONTROLLER_RTN_T)ch347_spi_send_command(0, len, NULL, ptr_rtn_data);
+	return (SPI_CONTROLLER_RTN_T)spi_send_command(0, len, NULL, ptr_rtn_data);
 }
 
 SPI_CONTROLLER_RTN_T SPI_CONTROLLER_Write_NByte( u8 *ptr_data, u32 len, SPI_CONTROLLER_SPEED_T speed )
 {
-	return (SPI_CONTROLLER_RTN_T)ch347_spi_send_command(len, 0, ptr_data, NULL);
+	return (SPI_CONTROLLER_RTN_T)spi_send_command(len, 0, ptr_data, NULL);
 }
 
 #if 0

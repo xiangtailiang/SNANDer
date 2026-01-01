@@ -14,7 +14,15 @@ RES       ?= res.bin
 
 EEPROM_SUPPORT = yes
 
+ifeq ($(USE_STM32), 1)
+EEPROM_SUPPORT = no
+CFLAGS += -DUSE_STM32_SPI
+SRCS = flashcmd_api.c spi_controller.c spi_nand_flash.c spi_nor_flash.c stm32_spi.c timer.c main.c
+LIBS =
+else
 SRCS = flashcmd_api.c spi_controller.c spi_nand_flash.c spi_nor_flash.c ch347_spi.c timer.c main.c
+LIBS = -lusb-1.0
+endif
 
 ifdef LIBS_BASE
 CFLAGS += -I$(LIBS_BASE)/include
@@ -46,7 +54,7 @@ endif
 $(PKG): $(TARGET)$(EXEC_SUFFIX)
 
 $(TARGET)$(EXEC_SUFFIX): $(SRCS)
-	$(CC) $(CFLAGS) $(SRCS) $(LDFLAGS) -lusb-1.0 -o $@
+	$(CC) $(CFLAGS) $(SRCS) $(LDFLAGS) $(LIBS) -o $@
 
 $(RES):
 	$(WINDRES) -i $(TARGET).rc -o $@

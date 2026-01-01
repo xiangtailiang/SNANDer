@@ -25,7 +25,16 @@
 #include <time.h>
 
 #include "flashcmd_api.h"
+#include "flashcmd_api.h"
+#ifdef USE_STM32_SPI
+#include "stm32_spi.h"
+#define spi_init stm32_spi_init
+#define spi_shutdown stm32_spi_shutdown
+#else
 #include "ch347_spi.h"
+#define spi_init ch347_spi_init
+#define spi_shutdown ch347_spi_shutdown
+#endif
 #include "spi_nand_flash.h"
 
 struct flash_cmd prog;
@@ -53,11 +62,19 @@ extern int org;
 #define EHELP	""
 #endif
 
+#ifdef USE_STM32_SPI
+#define PROTO_HELP " -S <port>      set serial port for STM32 (default /dev/ttyACM0)\n"
+#else
+#define PROTO_HELP ""
+#endif
+
 #define _VER	"1.7.9"
 
 void title(void)
 {
-#ifdef EEPROM_SUPPORT
+#ifdef USE_STM32_SPI
+    printf("\nSNANDer (STM32) - Spi Nor/nAND programmER v." _VER " by McMCC <mcmcc@mail.ru>\n\n");
+#elif defined(EEPROM_SUPPORT)
 	printf("\nSNANDer - Serial Nor/nAND/Eeprom programmeR v." _VER " by McMCC <mcmcc@mail.ru>\n\n");
 #else
 	printf("\nSNANDer - Spi Nor/nAND programmER v." _VER " by McMCC <mcmcc@mail.ru>\n\n");
@@ -76,6 +93,7 @@ void usage(void)
 		" -L             print list support chips\n"\
 		" -i             read the chip ID info\n"\
 		"" EHELP ""\
+        "" PROTO_HELP ""\
 		" -e             erase chip(full or use with -a [-l])\n"\
 		" -l <bytes>     manually set length\n"\
 		" -a <address>   manually set address\n"\
@@ -97,13 +115,22 @@ int main(int argc, char* argv[])
 	title();
 
 #ifdef EEPROM_SUPPORT
-	while ((c = getopt(argc, argv, "diIhveLkl:a:w:r:o:s:E:f:8")) != -1)
+	while ((c = getopt(argc, argv, "diIhveLkl:a:w:r:o:s:E:f:8S:")) != -1)
 #else
-	while ((c = getopt(argc, argv, "diIhveLkl:a:w:r:o:s:")) != -1)
+	while ((c = getopt(argc, argv, "diIhveLkl:a:w:r:o:S:")) != -1)
 #endif
 	{
 		switch(c)
 		{
+#ifdef USE_STM32_SPI
+            case 'S':
+                stm32_set_serial_device(optarg);
+                break;
+#else
+            case 'S':
+                printf("Option -S not supported in CH347 mode\n");
+                exit(0);
+#endif
 #ifdef EEPROM_SUPPORT
 			case 'E':
 				if ((eepromsize = parseEEPsize(optarg, &eeprom_info)) > 0) {
@@ -173,10 +200,12 @@ int main(int argc, char* argv[])
 				str = strdup(optarg);
 				OOB_size = strtoll(str, NULL, *str && *(str + 1) == 'x' ? 16 : 10);
 				break;
+#ifdef EEPROM_SUPPORT
 			case 's':
 				str = strdup(optarg);
 				spage_size = strtoll(str, NULL, *str && *(str + 1) == 'x' ? 16 : 10);
 				break;
+#endif
 			case 'a':
 				str = strdup(optarg);
 				addr = strtoll(str, NULL, *str && *(str + 1) == 'x' ? 16 : 10);
@@ -215,7 +244,7 @@ int main(int argc, char* argv[])
 		return -1;
 	}
 
-	if (ch347_spi_init() < 0) {
+	if (spi_init() < 0) {
 		printf("Programmer device not found!\n\n");
 		return -1;
 	}
@@ -385,9 +414,9 @@ very:
 	}
 
 out:	//exit with errors
-	ch347_spi_shutdown();
+	spi_shutdown();
 	return -1;
 okout:	//exit without errors
-	ch347_spi_shutdown();
+	spi_shutdown();
 	return 0;
 }
